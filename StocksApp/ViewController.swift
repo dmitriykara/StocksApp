@@ -8,6 +8,7 @@
 import UIKit
 
 class ViewController: UIViewController, UIPickerViewDataSource, UIPickerViewDelegate {
+    @IBOutlet weak var Image: UIImageView!
     @IBOutlet weak var companyNameLabel: UILabel!
     @IBOutlet weak var symbolLabel: UILabel!
     @IBOutlet weak var priceLabel: UILabel!
@@ -38,10 +39,12 @@ class ViewController: UIViewController, UIPickerViewDataSource, UIPickerViewDele
     
     private func requestQuoteUpdate() {
         self.activityIndicator.startAnimating()
+        self.Image.image = nil
         self.companyNameLabel.text = "-"
         self.symbolLabel.text = "-"
         self.priceLabel.text = "-"
         self.priceChangeLabel.text = "-"
+        self.priceChangeLabel.textColor = UIColor.black
         
         let selectedRow = self.companyPicker.selectedRow(inComponent: 0)
         let selectedSymbol = Array(self.companies.values)[selectedRow]
@@ -63,6 +66,24 @@ class ViewController: UIViewController, UIPickerViewDataSource, UIPickerViewDele
             self.parseQuote(data: data)
         }
         
+        dataTask.resume()
+    }
+    
+    private func downloadImage(for symbol: String) {
+        let url = URL(string: "https://storage.googleapis.com/iex/api/logos/\(symbol).png")!
+        
+        let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+            guard
+                let data = data,
+                error == nil
+            else {
+                print("! Can't load image")
+                return
+            }
+            DispatchQueue.main.async() {
+                self.Image.image = UIImage(data: data)
+            }
+        }
         dataTask.resume()
     }
     
@@ -91,11 +112,18 @@ class ViewController: UIViewController, UIPickerViewDataSource, UIPickerViewDele
     }
     
     private func displayStockInfo(company: String, symbol: String, price: Double, priceChange: Double) {
-        self.activityIndicator.stopAnimating()
         self.companyNameLabel.text = company
         self.symbolLabel.text = symbol
         self.priceLabel.text = "\(price)"
         self.priceChangeLabel.text = "\(priceChange)"
+        if priceChange > 0 {
+            self.priceChangeLabel.textColor = UIColor.systemGreen
+        }
+        if priceChange < 0 {
+            self.priceChangeLabel.textColor = UIColor.systemRed
+        }
+        self.downloadImage(for: symbol)
+        self.activityIndicator.stopAnimating()
     }
     
     // MARK: - PickerView
